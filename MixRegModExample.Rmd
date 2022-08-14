@@ -101,7 +101,7 @@ summary(slp_reg_2 )
 
 *Note: The correlation of the fixed effects (which is the correlation between the slope and the intercept) is -0.138. Intercept and slope are weakly negatively correlated. This tells us that participants who had a fast reaction time at the beginning (i.e. a lower time) were (weakly) more likely to become slower (i.e. have a higher rate of change) than those who, on average were already slow to begin with. This makes sense because participants with a faster reaction time (i.e. lower time) have more room to "grow"*
 
-### 5
+### 5 (Markdown + Latex)
 Mixed-effects regression equations (using equation representing HLM-based levels) corresponding to the model estimated in (4).
 
 
@@ -132,8 +132,8 @@ the overall population slope.
 population with mean zero and common variance $\sigma^{2}$.
 
 
-### 6
-matrix-based equation for model presented in (4) (+ expansion of matrix notation equation to full matrices showing all of the elements)
+### 6 (Markdown + Latex)
+Matrix-based equation for model presented in (4) (+ expansion of matrix notation equation to full matrices showing all of the elements)
 
 <center>$\boldsymbol{RT_i} = \boldsymbol{X_i \beta} + \boldsymbol{Z_i \nu_i} + \boldsymbol{\epsilon_i}$</center>
 
