@@ -1,0 +1,161 @@
+---
+title: "Mixed-Effects Regression Model"
+author: "Butovens Médé"
+date: "10/6/2020"
+output: html_document
+---
+### Install and load packages
+```{r setup, include=TRUE}
+#knitr::opts_chunk$set(echo = TRUE)
+# install.packages(c("lme4","Matrix","lattice", "ggplot2"))
+library(lme4)
+library(Matrix)
+library(lattice)
+library(ggplot2)
+
+# load data
+data("sleepstudy")
+str(sleepstudy) # Looking at the structure of the dataset
+head(sleepstudy) # Looking at the first 6 observations of the dataset
+tail(sleepstudy) # Looking at the last 6 observations of the dataset
+sum(is.na(sleepstudy)) # No missing data
+attach(sleepstudy)
+```
+
+### 1
+```{r}
+# basic linear regression
+slp_reg <- lm(Reaction ~ Days)
+summary(slp_reg)
+```
+In this model both the intercept and slope are significant (with p < .01). 
+* Here the estimated intercept, is the overall average (i.e. average across people when everything else is zeroed out) reaction time. This tells us that the average reaction time for all people at baseline (i.e. first time point measured but coded t=0) is around 251ms.
+* The estimated slope, is the overall population slope and it tells us the rate of change per unit of "Days" when everything else is held constant. Here, for every day spent doing the sleep deprivation study, the reaction time for the population on average is increased by about 10.5ms.
+
+*Note: This model makes the assumption that the error terms are independent across observations (i.e. time AND person). However, in longitudinal data, time is nested within person so there is dependency in the error terms. In other words, within a  person, the value at t=3, depends on the value at t=2, which depends on the value at t=1 etc.. (inversely the value at t=1 affects the value at t=2 etc... they aer correlated). Thus the assumption of independence in error terms is violated. In addition, this model treats time as being the same across individual. No individual variations is taken into account, which might be unreasonable. Thus, this model cannot tell us how people differ in their trends across time.*
+
+### 2
+```{r}
+xyplot(Reaction ~ Days, data = sleepstudy, type=c("g","p","r"), index = function(x,y)coef(lm(y~x))[1],
+       xlab = "Sleep Days", ylab = "Average Reaction Time in ms", main = "Reaction time for all participants \n across time", aspect = "xy")
+```
+
+This plot shows us the reaction time for all participants for each day of the study. We can see that the variation in reaction time among the participants in the study tend to increase as days go by. This seems to violate the assumption of homoscedasticity (i.e. the variance of residual is the same for any value of X) of simple linear regression.   
+
+
+#### (2 bis)
+```{r}
+ggplot(data = sleepstudy, aes(x = Days, y = Reaction, group = Subject)) + 
+  geom_point(aes(color= Subject)) +
+  ggtitle("Average Reaction Time Reaction time for all participants across time") +
+  xlab("Sleep Days") +
+  ylab("Reaction Time (ms)")
+
+```
+
+
+### 3
+```{r}
+xyplot(Reaction ~ Days | Subject, data = sleepstudy, type=c("g","p","r"), index = function(x,y)coef(lm(y~x))[1],
+       xlab = "Sleep Days", ylab = "Average reaction Time in ms", main = "Reaction time per participant \n across time", aspect = "xy")
+```
+
+* In this plots we can see the average reaction time for each participants for each day of the study. We can see that participants do not have the same baseline (i.e. at the beginning of the study they start with different average reaction time speed). Some are faster than others at baseline (e.g. participants 310, 370 with reaction time of ~200ms) and some are slower than others (e.g. participants 331, 330 with reaction time of ~330ms). In addition, their reaction-time rate of change throughout the study is different from one another. Some participants are strongly affected by sleep deprivation which makes them have much slower reaction time at the end of the study compared to the beginning. This is evidenced by the steep positive rate of change (i.e. slope) seen in the plots (e.g. participants 337, 370, 308). Others are not as strongly affected by sleep deprivation and their reaction time at the end of the study is similar to the one they had when they started. This shown by the shallower slope in the some plots (e.g. participants 330, 309). One participant (i.e 335) even show a decreasing rate of change in their reaction time. This would imply that they got faster with more days of sleep deprivation. It is also important to state that for all participants, the rate of change (i.e.slope) appear to be linear.
+
+* Overall this might suggest that the simple linear regression as a model and as a mean to estimate the parameters that generated this data is not the most appropriate. The simple linear regression assume one overall intercept (i.e. baseline level), and one overall slope (i.e. rate of change) for the whole population without taking into account the individual differences in both as shown here. In addition we saw that the homoscedasticity assumption might have been violated under the simple linear regression model. This is another reason, why this model does not feel the most appropriate.
+
+* A multilevel model with random intercepts and random slopes seem to be more appropriate because it would take into account the individual difference at baseline and across time.
+
+
+#### (3 bis)
+```{r}
+ggplot(data = sleepstudy, aes(x = Days, y = Reaction, color = Subject)) +
+  geom_point() +
+  ggtitle("Average Reaction Time per Participants across time") +
+  xlab("Sleep Days") +
+  ylab("Reaction Time (ms)") +
+  scale_x_continuous(breaks = seq(0,10,2)) +
+  scale_y_continuous(breaks = seq(200,450,50)) +
+  facet_wrap(vars(Subject)) +
+  geom_smooth(method = "lm", se = F)
+```
+
+*Note: This plot makes the differences in intercepts and slopes between participants appear prominent than the previous plot. The way the information is displayed might affect the assessment of which model one decides to use*
+
+### 4
+```{r}
+# Estimate of the mixed-effects regression model that allows for random effects of intercepts and slopes
+slp_reg_2 <- lmer(Reaction ~ Days + (Days | Subject), sleepstudy)
+summary(slp_reg_2 )
+```
+
+* The estimates of the random effects tells us that: 
+
+1- The standard deviation of the intercepts is 24.7ms (with variance ~612ms), which means that on average people deviate from the group mean (or overall group average reaction time) by 24.7ms. This corroborate what we saw in question 3. Participants start with different reaction time average. 
+
+2- The standard deviation of the slope is 5.92ms/Day (with variance 35.07ms/Day). This means that on average people deviate from the overall rate of change (or slope) by 5.92ms per day. This also echoes what we saw in question 3. i.e. participants are affected differently by sleep deprivation and therefore their slopes have different rate of change. 
+
+3- The residual variance indicates how much each individual deviate from their respective mean reaction time. 
+
+* The fixed effects estimates echo what we have seen previously in question 1: i.e. the average reaction time for all participants at baseline (i.e. t=0) is about 251ms, and that the daily rate of change (note: here 1 day = 1 unit) for all participants in reaction time is on average +10.5ms. In other words the reaction time of participants increases on average by 10.5ms per day spent in the sleep deprivation study. These results also confirm the mostly positive linear trends that we saw for most participants in question 3.
+
+*Note: The correlation of the fixed effects (which is the correlation between the slope and the intercept) is -0.138. Intercept and slope are weakly negatively correlated. This tells us that participants who had a fast reaction time at the beginning (i.e. a lower time) were (weakly) more likely to become slower (i.e. have a higher rate of change) than those who, on average were already slow to begin with. This makes sense because participants with a faster reaction time (i.e. lower time) have more room to "grow"*
+
+### 5
+Mixed-effects regression equations (using equation representing HLM-based levels) corresponding to the model estimated in (4).
+
+
+
+**Level 1 model: (within-subjects)**
+<center>$RT_{i,j} = b_{0,i} + b_{1,i}Day_{i,j} + \epsilon_{i,j}$</center>
+
+**Level 2 model: (between-subjects)**
+<center>$b_{0,i} = \beta_{0} + \nu_{0,i}$</center>
+
+<center>$b1,i = \beta_{1} + \nu_{1,i}$</center>
+
+
+
+**Notation meaning:** 
+
+* $RT_{i,j}$ is the response variable (i.e. Reaction Time), which indicates that individual i’s response time at time j is influenced by his/her initial level $b_{0,i}$, and his/her time trend $b_{1,i}$.
+
+* $b_{0,i}$ is the random intercept for individual i. It indicates that individual i’s initial level is composed of
+the overall population initial level (i.e.the population intercept) $\beta_{0}$, plus a unique contribution for that
+individual $\nu_{0,i}$, which makes him/her deviate from the population mean intercept.
+
+* $b_{1,i}$ is the random slope for individual i, and it is composed of the population slope (i.e. population
+intercept) $\beta_{1}$, plus the unique contribution for that individual $\nu_{1,i}$, which makes him/her deviate from
+the overall population slope.
+
+* $\epsilon_{i,j}$ is the residual nad it is assumed to be normally and *conditionally independently* distributed in the
+population with mean zero and common variance $\sigma^{2}$.
+
+
+### 6
+matrix-based equation for model presented in (4) (+ expansion of matrix notation equation to full matrices showing all of the elements)
+
+<center>$\boldsymbol{RT_i} = \boldsymbol{X_i \beta} + \boldsymbol{Z_i \nu_i} + \boldsymbol{\epsilon_i}$</center>
+
+$\boldsymbol{RT_i} \text{ is an} \ n_i \times 1 \ \text{response time vector for individual} \ i$
+
+$\boldsymbol{X_i} \text{ is an} \ n_i \times p \ \text{covariate design matrix for the fixed effects}$
+
+$\boldsymbol{\beta} \text{ is an} \ p \times 1 \ \text{vector of unknown fixed regeression parameters}$
+
+$\boldsymbol{Z_i} \text{ is an} \ n_i \times r \ \text{design matrix for random effects}$
+
+$\boldsymbol{\nu_i} \text{ is an} \ r \times 1 \ \text{vector of unknown random effects} \sim N(0,\Sigma\nu)$
+
+$\boldsymbol{\epsilon_i} \text{ is an} \ n_i \times 1 \ \text{vector} \sim N(0,\sigma^2 \boldsymbol{I}n_i)$
+
+
+$$ \boldsymbol{RT_i} = \begin{bmatrix} RT_{i1} \\  RT_{i2} \\  RT_{i3} \\ RT_{i4} \\  RT_{i5} \\  RT_{i6} \\ RT_{i7} \\ RT_{i8} \\  RT_{i9} \\ RT_{i10}\\ 
+\end{bmatrix} \ 
+\boldsymbol{X_i} = \boldsymbol{Z_i} \begin{bmatrix} 1 & t_{i1} \\ 1 & t_{i2} \\ 1 & t_{i3} \\ 1 & t_{i4} \\ 1 & t_{i5} \\ 1 & t_{i6} \\ 1 & t_{i7} \\ 1 & t_{i8} \\ 1 & t_{i9} \\ 1 & t_{i10}\\ 
+\end{bmatrix} \ 
+\boldsymbol{\beta} = \begin{bmatrix} \beta_0 \\ \beta_1 \\ \end{bmatrix} \
+\boldsymbol{\nu_i} = \begin{bmatrix} \nu_{0i} \\ \nu_{1i} \\ \end{bmatrix}
+$$
+
+
